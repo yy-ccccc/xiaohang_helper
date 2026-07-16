@@ -122,7 +122,8 @@ def main():
         for i, q in enumerate(questions):
             with cols[i % 2]:
                 if st.button(q, key=f"btn_{user_type}_{i}", use_container_width=True):
-                    answer, messages = ask_xiaohang(q, user_type, st.session_state.messages)
+                    with st.spinner("小航正在思考..."):
+                        answer, messages = ask_xiaohang(q, user_type, st.session_state.messages)
                     st.session_state.messages = messages
                     st.session_state.chat_history.append({
                         "question": q, 
@@ -155,7 +156,8 @@ def main():
         
         if st.button("发送", use_container_width=True):
             if question_input.strip():
-                answer, messages = ask_xiaohang(question_input, user_type, st.session_state.messages)
+                with st.spinner("小航正在思考..."):
+                    answer, messages = ask_xiaohang(question_input, user_type, st.session_state.messages)
                 st.session_state.messages = messages
                 st.session_state.chat_history.append({
                     "question": question_input, 
