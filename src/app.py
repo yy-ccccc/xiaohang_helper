@@ -7,9 +7,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.api import call_ai, build_user_message, trim_history
 from src.prompts import build_system_prompt
-from src.config import USER_PROFILES, RECOMMENDED_QUESTIONS, PHONE_DIRECTORY
+from src.config import USER_PROFILES, RECOMMENDED_QUESTIONS, PHONE_DIRECTORY, TAB_QUESTIONS
 
 def ask_xiaohang(question, user_type, messages=None):
+    import time
     if messages is None:
         messages = []
     
@@ -22,11 +23,14 @@ def ask_xiaohang(question, user_type, messages=None):
     
     messages = trim_history(messages)
     
+    start_time = time.time()
     answer, error = call_ai(messages)
+    elapsed_time = time.time() - start_time
+    
     if error:
-        return f"AI服务暂时不可用，您可以查看电话黄页获取帮助。错误信息：{error}", messages
+        return f"AI服务暂时不可用，您可以查看电话黄页获取帮助。错误信息：{error}", messages, 0, elapsed_time
     messages.append({"role": "assistant", "content": answer})
-    return answer, messages
+    return answer, messages, len(answer), elapsed_time
 
 def main():
     st.set_page_config(
@@ -129,22 +133,29 @@ def main():
         st.markdown(f"当前身份：**{profile['name']}**")
         st.markdown(f"📊 历史记录数量：**{len(st.session_state.chat_history)}**")
         
-        st.markdown("### 推荐问题")
-        questions = RECOMMENDED_QUESTIONS[user_type]
-        cols = st.columns(2)
-        for i, q in enumerate(questions):
-            with cols[i % 2]:
-                if st.button(q, key=f"btn_{user_type}_{i}", use_container_width=True):
-                    with st.spinner("小航正在思考..."):
-                        answer, messages = ask_xiaohang(q, user_type, st.session_state.messages)
-                    st.session_state.messages = messages
-                    st.session_state.chat_history.append({
-                        "question": q, 
-                        "answer": answer,
-                        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        "identity": profile['name']
-                    })
-                    st.rerun()
+        def set_question(q):
+            st.session_state.current_question = q
+        
+        st.markdown("### 问题分类")
+        tab1, tab2, tab3 = st.tabs(["新生指南", "办事流程", "应急防骗"])
+        
+        with tab1:
+            cols = st.columns(2)
+            for i, q in enumerate(TAB_QUESTIONS["新生指南"]):
+                with cols[i % 2]:
+                    st.button(q, key=f"tab1_{i}", use_container_width=True, on_click=set_question, args=(q,))
+        
+        with tab2:
+            cols = st.columns(2)
+            for i, q in enumerate(TAB_QUESTIONS["办事流程"]):
+                with cols[i % 2]:
+                    st.button(q, key=f"tab2_{i}", use_container_width=True, on_click=set_question, args=(q,))
+        
+        with tab3:
+            cols = st.columns(2)
+            for i, q in enumerate(TAB_QUESTIONS["应急防骗"]):
+                with cols[i % 2]:
+                    st.button(q, key=f"tab3_{i}", use_container_width=True, on_click=set_question, args=(q,))
         
         st.markdown("---")
         col1, col2 = st.columns([3, 1])
@@ -158,33 +169,36 @@ def main():
         
         for i, chat in enumerate(st.session_state.chat_history):
             timestamp = chat.get('timestamp', '')
+            word_count = chat.get('word_count', 0)
+            elapsed_time = chat.get('elapsed_time', 0)
             with st.expander(f"Q: {chat['question']}"):
                 if timestamp:
                     st.markdown(f"⏰ {timestamp}")
                 st.markdown(f"**A:** {chat['answer']}")
+                if word_count > 0 or elapsed_time > 0:
+                    st.caption(f"回答字数：{word_count} 字 · 耗时：{elapsed_time:.1f} 秒")
         
         st.markdown("---")
         st.markdown("### 输入问题")
-        question_input = st.text_input("请输入您的问题：", key="question_input")
+        question_input = st.text_input("请输入您的问题：", key="question_input", value=st.session_state.get("current_question", ""))
         
         if st.button("发送", use_container_width=True):
             if question_input.strip():
                 with st.spinner("小航正在思考..."):
-                    answer, messages = ask_xiaohang(question_input, user_type, st.session_state.messages)
+                    answer, messages, word_count, elapsed_time = ask_xiaohang(question_input, user_type, st.session_state.messages)
                 st.session_state.messages = messages
                 st.session_state.chat_history.append({
                     "question": question_input, 
                     "answer": answer,
                     "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    "identity": profile['name']
+                    "identity": profile['name'],
+                    "word_count": word_count,
+                    "elapsed_time": elapsed_time
                 })
-                st.session_state.last_question = question_input
+                st.session_state.current_question = ""
                 st.rerun()
             else:
                 st.warning("请输入有效问题")
-        
-        if "last_question" in st.session_state:
-            st.session_state.last_question = None
 
         st.markdown("---")
         col1, col2 = st.columns([3, 1])
