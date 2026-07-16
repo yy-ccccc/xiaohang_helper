@@ -64,14 +64,13 @@ def main():
     
     sidebar.title("功能导航")
     if st.session_state.user_type:
-        sidebar.button("🏠 返回首页", on_click=lambda: st.session_state.update(page="identity", user_type=None, chat_history=[], messages=[]))
+        sidebar.button("🏠 返回首页", on_click=lambda: st.session_state.update(page="identity", user_type=None))
         sidebar.button("💬 校园问答", on_click=lambda: st.session_state.update(page="chat"))
         sidebar.button("📞 电话黄页", on_click=lambda: st.session_state.update(page="phone"))
     
     if st.session_state.page == "identity":
         st.session_state.user_type = None
-        st.session_state.chat_history = []
-        st.session_state.messages = []
+        st.session_state.previous_page = "identity"
         
         st.markdown("---")
         st.header("请选择您的身份")
@@ -81,19 +80,31 @@ def main():
         
         with col1:
             if st.button("🎓 大一新生", key="btn_1", use_container_width=True):
+                if st.session_state.get('last_user_type') != "1":
+                    st.session_state.chat_history = []
+                    st.session_state.messages = []
                 st.session_state.user_type = "1"
+                st.session_state.last_user_type = "1"
                 st.session_state.page = "chat"
                 st.rerun()
         
         with col2:
             if st.button("📚 在校老生", key="btn_2", use_container_width=True):
+                if st.session_state.get('last_user_type') != "2":
+                    st.session_state.chat_history = []
+                    st.session_state.messages = []
                 st.session_state.user_type = "2"
+                st.session_state.last_user_type = "2"
                 st.session_state.page = "chat"
                 st.rerun()
         
         with col3:
             if st.button("👨‍🏫 教师", key="btn_3", use_container_width=True):
+                if st.session_state.get('last_user_type') != "3":
+                    st.session_state.chat_history = []
+                    st.session_state.messages = []
                 st.session_state.user_type = "3"
+                st.session_state.last_user_type = "3"
                 st.session_state.page = "chat"
                 st.rerun()
         
@@ -106,6 +117,7 @@ def main():
         """)
 
     elif st.session_state.page == "chat":
+        st.session_state.previous_page = "chat"
         if not st.session_state.user_type:
             st.session_state.page = "identity"
             st.rerun()
@@ -115,6 +127,7 @@ def main():
         
         st.markdown(f"---")
         st.markdown(f"当前身份：**{profile['name']}**")
+        st.markdown(f"📊 历史记录数量：**{len(st.session_state.chat_history)}**")
         
         st.markdown("### 推荐问题")
         questions = RECOMMENDED_QUESTIONS[user_type]
@@ -165,9 +178,13 @@ def main():
                     "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     "identity": profile['name']
                 })
+                st.session_state.last_question = question_input
                 st.rerun()
             else:
                 st.warning("请输入有效问题")
+        
+        if "last_question" in st.session_state:
+            st.session_state.last_question = None
 
         st.markdown("---")
         col1, col2 = st.columns([3, 1])

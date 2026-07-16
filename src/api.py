@@ -1,6 +1,7 @@
 import requests
 import os
 import sys
+from glob import glob
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,10 +21,10 @@ def load_file(filename):
         print(f"文件未找到：{filepath}")
         return ""
 
-campus_data = {
-    filename: load_file(filename)
-    for filename in ["01_新生入学.md", "02_办事流程.md", "03_电话黄页.md", "04_应急防骗.md"]
-}
+campus_data = {}
+for filepath in sorted(glob(os.path.join(DATA_DIR, "*.md"))):
+    filename = os.path.basename(filepath)
+    campus_data[filename] = load_file(filename)
 
 def get_relevant_data(question):
     relevant_files = []
@@ -53,11 +54,7 @@ def get_relevant_data(question):
     return content
 
 def build_user_message(question):
-    relevant_data = get_relevant_data(question)
-    return f"""【学校资料】
-{relevant_data}
-
-用户问题：{question}"""
+    return question
 
 def call_ai(messages):
     data = {
