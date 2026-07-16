@@ -127,7 +127,8 @@ def main():
                     st.session_state.chat_history.append({
                         "question": q, 
                         "answer": answer,
-                        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        "identity": profile['name']
                     })
                     st.rerun()
         
@@ -159,11 +160,34 @@ def main():
                 st.session_state.chat_history.append({
                     "question": question_input, 
                     "answer": answer,
-                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    "identity": profile['name']
                 })
                 st.rerun()
             else:
                 st.warning("请输入有效问题")
+
+        st.markdown("---")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("### 问答历史")
+        with col2:
+            if st.button("🗑️ 清空历史", key="clear_history_bottom", use_container_width=True):
+                st.session_state.chat_history = []
+                st.session_state.messages = []
+                st.rerun()
+        if st.session_state.chat_history:
+            for chat in reversed(st.session_state.chat_history):
+                timestamp = chat.get('timestamp', '')
+                identity = chat.get('identity', '')
+                question = chat.get('question', '')
+                if timestamp:
+                    time_only = timestamp.split(' ')[1] if ' ' in timestamp else timestamp
+                else:
+                    time_only = ''
+                st.markdown(f"**[{time_only}] {identity} 提问：{question}**")
+        else:
+            st.info("暂无问答历史")
 
     elif st.session_state.page == "phone":
         st.markdown("---")
