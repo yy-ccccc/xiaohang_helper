@@ -1,14 +1,27 @@
 import requests
 import os
+import sys
 
-API_URL = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-npnovafjuixqniobduslqkqybtkqruzahjybpvonldetxmqm"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_URL = os.getenv("API_URL", "https://api.siliconflow.cn/v1/chat/completions")
+API_KEY = os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
+
 headers = {
     "Authorization": "Bearer {}".format(API_KEY),
     "Content-Type": "application/json"
 }
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+MAX_TOKENS = 2048
+TEMPERATURE = 0.1
+REPETITION_PENALTY = 1.1
+TIMEOUT = 60
+MAX_HISTORY_LENGTH = 10
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 def load_file(filename):
     filepath = os.path.join(DATA_DIR, filename)
@@ -23,37 +36,72 @@ campus_data = {
     "01_新生入学.md": load_file("01_新生入学.md"),
     "02_办事流程.md": load_file("02_办事流程.md"),
     "03_电话黄页.md": load_file("03_电话黄页.md"),
-    "04_应急防骗.md": load_file("04_应急防骗.md")
+    "04_应急防骗.md": load_file("04_应急防骗.md"),
+    "05_Prompt模板.md": load_file("05_Prompt模板.md")
 }
 
 def get_relevant_data(question):
-    keywords = ["报到", "宿舍", "学费", "军训", "食堂", "图书馆", "补卡", "证明", "转专业", "报销", "调课", "报修", "科研", "电话", "黄页", "防骗", "心理", "应急"]
+    keyword_map = {
+        "01_新生入学.md": ["报到", "宿舍", "学费", "军训", "迎新"],
+        "02_办事流程.md": ["补卡", "证明", "转专业", "报销", "调课", "报修", "科研", "图书馆"],
+        "03_电话黄页.md": ["电话", "黄页", "联系", "号码"],
+        "04_应急防骗.md": ["防骗", "心理", "应急", "安全", "报警"]
+    }
+    
     relevant_files = []
     
-    for keyword in keywords:
-        if keyword in question:
-            if keyword in ["报到", "宿舍", "学费", "军训"] and "01_新生入学.md" not in relevant_files:
-                relevant_files.append("01_新生入学.md")
-            if keyword in ["补卡", "证明", "转专业", "报销", "调课", "报修", "科研"] and "02_办事流程.md" not in relevant_files:
-                relevant_files.append("02_办事流程.md")
-            if keyword in ["电话", "黄页"] and "03_电话黄页.md" not in relevant_files:
-                relevant_files.append("03_电话黄页.md")
-            if keyword in ["防骗", "心理", "应急"] and "04_应急防骗.md" not in relevant_files:
-                relevant_files.append("04_应急防骗.md")
+    for filename, keywords in keyword_map.items():
+        for keyword in keywords:
+            if keyword in question:
+                if filename not in relevant_files:
+                    relevant_files.append(filename)
+                    break
     
     if not relevant_files:
         relevant_files = ["01_新生入学.md", "02_办事流程.md"]
     
     content = ""
     for filename in relevant_files:
-        lines = campus_data[filename].split('\n')
-        key_lines = []
-        for line in lines:
-            if line.strip() and not line.startswith('#') and len(line) > 5:
-                key_lines.append(line)
-        content += "[文件: {}]\n{}\n\n".format(filename, '\n'.join(key_lines))
+        file_content = campus_data.get(filename, "")
+        if file_content:
+            lines = file_content.split('\n')
+            key_lines = []
+            for line in lines:
+                if line.strip() and not line.startswith('#') and len(line) > 5:
+                    key_lines.append(line)
+            joined_lines = '\n'.join(key_lines)
+            content += "[文件: {}]\n{}\n\n".format(filename, joined_lines)
     
     return content
+
+def build_user_message(question):
+    relevant_data = get_relevant_data(question)
+    return """【学校资料】
+{}
+
+用户问题：{}""".format(relevant_data, question)
+
+def call_ai(messages):
+    data = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "temperature": TEMPERATURE,
+        "repetition_penalty": REPETITION_PENALTY,
+        "max_tokens": MAX_TOKENS
+    }
+    try:
+        response = requests.post(API_URL, headers=headers, json=data, timeout=TIMEOUT)
+        if response.status_code != 200:
+            result = response.json() if response.content else {}
+            error_msg = result.get("message", "AI服务返回错误状态码：{}".format(response.status_code))
+            return None, error_msg
+        result = response.json()
+        if "choices" in result and len(result["choices"]) > 0:
+            answer = result["choices"][0]["message"]["content"]
+            return answer, None
+        return None, "AI服务返回格式异常"
+    except requests.exceptions.RequestException as e:
+        return None, "网络连接异常：{}".format(str(e))
 
 user_profiles = {
     "1": {
@@ -101,16 +149,18 @@ recommended_questions = {
 }
 
 phone_directory = {
-    "教务处": "0371-61912001",
-    "学生处": "0371-61912002",
-    "保卫处": "0371-61912003",
-    "校医院": "0371-61912004",
-    "图书馆": "0371-61912005",
-    "宿管中心": "0371-61912006",
-    "后勤服务": "0371-61912007",
-    "财务处": "0371-61912008",
-    "招生办": "0371-61912009",
-    "就业指导中心": "0371-61912010"
+    "教务处": "0371-61912011",
+    "学生处": "0371-61912020",
+    "保卫处": "0371-61912030",
+    "校医院": "0371-61912034",
+    "图书馆": "0371-61912017",
+    "宿管中心": "0371-61912029",
+    "后勤服务": "0371-61912027",
+    "财务处": "0371-61912009",
+    "招生办": "0371-61912039",
+    "就业指导中心": "0371-61912042",
+    "校园110": "0371-61911110",
+    "总值班室": "0371-61911000"
 }
 
 def extract_prompt(template_content, user_type):
@@ -146,34 +196,29 @@ def extract_prompt(template_content, user_type):
     
     return ""
 
-def build_system_prompt(user_type):
+def build_system_prompt(user_type, question=None):
     profile = user_profiles[user_type]
-    template_content = load_file(profile["prompt_file"])
+    template_content = campus_data.get(profile["prompt_file"], "")
     prompt_template = extract_prompt(template_content, user_type)
     
-    if prompt_template:
-        all_data_content = ""
+    if question:
+        school_data = get_relevant_data(question)
+    else:
+        school_data = ""
         for filename, content in campus_data.items():
-            if content:
+            if content and filename != "05_Prompt模板.md":
                 lines = content.split('\n')
                 key_lines = []
                 for line in lines:
                     if line.strip() and not line.startswith('#') and len(line) > 5:
                         key_lines.append(line)
-                all_data_content += "[文件: {}]\n{}\n\n".format(filename, '\n'.join(key_lines))
-        
-        prompt_template = prompt_template.replace("{学校资料内容}", all_data_content)
-        return prompt_template
+                joined_lines = '\n'.join(key_lines)
+                school_data += "[文件: {}]\n{}\n\n".format(filename, joined_lines)
     
-    all_data_content = ""
-    for filename, content in campus_data.items():
-        if content:
-            lines = content.split('\n')
-            key_lines = []
-            for line in lines:
-                if line.strip() and not line.startswith('#') and len(line) > 5:
-                    key_lines.append(line)
-            all_data_content += "[文件: {}]\n{}\n\n".format(filename, '\n'.join(key_lines))
+    if prompt_template:
+        prompt_template = prompt_template.replace("{学校资料内容}", school_data)
+        prompt_template = prompt_template.replace("{user_name}", profile["name"])
+        return prompt_template
     
     return """你是"小航"，郑州航空工业管理学院的校园信息查询AI助手。
 
@@ -212,36 +257,30 @@ def build_system_prompt(user_type):
 - "调宿舍""换宿舍" = 宿舍调整申请
 - "证明""在读证明" = 在校学籍证明""".format(
         profile["name"],
-        all_data_content
+        school_data
     )
 
 messages = []
 
+def trim_history(messages_list):
+    if len(messages_list) > MAX_HISTORY_LENGTH + 1:
+        return [messages_list[0]] + messages_list[-(MAX_HISTORY_LENGTH):]
+    return messages_list
+
 def ask_xiaohang(question):
     global messages
-    user_message = "用户问题：{}".format(question)
+    
+    user_message = build_user_message(question)
     messages.append({"role": "user", "content": user_message})
     
-    if len(messages) > 11:
-        messages = [messages[0]] + messages[-10:]
+    messages = trim_history(messages)
     
-    data = {
-        "model": "Qwen/Qwen2.5-7B-Instruct",
-        "messages": messages
-    }
-    try:
-        response = requests.post(API_URL, headers=headers, json=data, timeout=60)
-        if response.status_code != 200:
-            print("AI服务暂时不可用，您可以查看电话黄页获取帮助")
-            return None
-        result = response.json()
-        answer = result["choices"][0]["message"]["content"]
-        messages.append({"role": "assistant", "content": answer})
-        return answer
-    except requests.exceptions.RequestException:
-        print("网络连接异常，AI服务暂时不可用")
-        print("您可以查看电话黄页获取帮助，或稍后再试")
+    answer, error = call_ai(messages)
+    if error:
+        print("AI服务暂时不可用，您可以查看电话黄页获取帮助。错误信息：{}".format(error))
         return None
+    messages.append({"role": "assistant", "content": answer})
+    return answer
 
 def show_phone_directory():
     print("=" * 60)
@@ -250,9 +289,11 @@ def show_phone_directory():
     for dept, phone in phone_directory.items():
         print("{:<12} {}".format(dept, phone))
     print("=" * 60)
+    print("温馨提示：如需紧急帮助，请拨打校园110：0371-61911110")
 
 def chat_mode():
     global messages
+    
     print()
     print("请选择您的身份：")
     for key in sorted(user_profiles.keys()):
