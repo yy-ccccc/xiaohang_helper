@@ -37,7 +37,8 @@ campus_data = {
     "02_办事流程.md": load_file("02_办事流程.md"),
     "03_电话黄页.md": load_file("03_电话黄页.md"),
     "04_应急防骗.md": load_file("04_应急防骗.md"),
-    "05_Prompt模板.md": load_file("05_Prompt模板.md")
+    "05_Prompt模板.md": load_file("05Prompt模板.md"),
+    "06_交通方式.md": load_file("06_交通方式.md"),
 }
 
 def get_relevant_data(question):

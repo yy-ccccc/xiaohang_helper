@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import SYSTEM_PROMPT_TEMPLATE, USER_PROFILES, KEYWORD_MAP
 from src.api import campus_data, get_relevant_data
 
-PROMPT_TEMPLATE_FILE = "05_Prompt模板.md"
+PROMPT_TEMPLATE_FILE = "06_Prompt模板.md"
 
 def load_prompt_template():
     from .config import DATA_DIR

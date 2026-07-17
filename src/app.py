@@ -57,10 +57,10 @@ def main():
 
     if "user_type" not in st.session_state:
         st.session_state.user_type = None
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if "chat_histories" not in st.session_state:
+        st.session_state.chat_histories = {"1": [], "2": [], "3": []}
+    if "message_histories" not in st.session_state:
+        st.session_state.message_histories = {"1": [], "2": [], "3": []}
     if "page" not in st.session_state:
         st.session_state.page = "identity"
 
@@ -84,31 +84,19 @@ def main():
         
         with col1:
             if st.button("🎓 大一新生", key="btn_1", use_container_width=True):
-                if st.session_state.get('last_user_type') != "1":
-                    st.session_state.chat_history = []
-                    st.session_state.messages = []
                 st.session_state.user_type = "1"
-                st.session_state.last_user_type = "1"
                 st.session_state.page = "chat"
                 st.rerun()
         
         with col2:
             if st.button("📚 在校老生", key="btn_2", use_container_width=True):
-                if st.session_state.get('last_user_type') != "2":
-                    st.session_state.chat_history = []
-                    st.session_state.messages = []
                 st.session_state.user_type = "2"
-                st.session_state.last_user_type = "2"
                 st.session_state.page = "chat"
                 st.rerun()
         
         with col3:
             if st.button("👨‍🏫 教师", key="btn_3", use_container_width=True):
-                if st.session_state.get('last_user_type') != "3":
-                    st.session_state.chat_history = []
-                    st.session_state.messages = []
                 st.session_state.user_type = "3"
-                st.session_state.last_user_type = "3"
                 st.session_state.page = "chat"
                 st.rerun()
         
@@ -129,36 +117,28 @@ def main():
         user_type = st.session_state.user_type
         profile = USER_PROFILES[user_type]
         
+        current_chat_history = st.session_state.chat_histories.get(user_type, [])
+        current_messages = st.session_state.message_histories.get(user_type, [])
+        
         st.markdown(f"---")
         st.markdown(f"当前身份：**{profile['name']}**")
-        st.markdown(f"📊 历史记录数量：**{len(st.session_state.chat_history)}**")
+        st.markdown(f"📊 历史记录数量：**{len(current_chat_history)}**")
         
         st.markdown("### 问题分类")
-        tab1, tab2, tab3 = st.tabs(["新生指南", "办事流程", "应急防骗"])
+        identity_tabs = TAB_QUESTIONS.get(user_type, {})
+        tab_names = list(identity_tabs.keys())
         
-        with tab1:
-            cols = st.columns(2)
-            for i, q in enumerate(TAB_QUESTIONS["新生指南"]):
-                with cols[i % 2]:
-                    if st.button(q, key=f"tab1_{i}", use_container_width=True):
-                        st.session_state.question = q
-                        st.rerun()
+        tabs = st.tabs(tab_names)
         
-        with tab2:
-            cols = st.columns(2)
-            for i, q in enumerate(TAB_QUESTIONS["办事流程"]):
-                with cols[i % 2]:
-                    if st.button(q, key=f"tab2_{i}", use_container_width=True):
-                        st.session_state.question = q
-                        st.rerun()
-        
-        with tab3:
-            cols = st.columns(2)
-            for i, q in enumerate(TAB_QUESTIONS["应急防骗"]):
-                with cols[i % 2]:
-                    if st.button(q, key=f"tab3_{i}", use_container_width=True):
-                        st.session_state.question = q
-                        st.rerun()
+        for idx, tab_name in enumerate(tab_names):
+            with tabs[idx]:
+                cols = st.columns(2)
+                questions = identity_tabs.get(tab_name, [])
+                for i, q in enumerate(questions):
+                    with cols[i % 2]:
+                        if st.button(q, key=f"tab_{user_type}_{tab_name}_{i}", use_container_width=True):
+                            st.session_state.question = q
+                            st.rerun()
         
         st.markdown("---")
         col1, col2 = st.columns([3, 1])
@@ -166,11 +146,11 @@ def main():
             st.markdown("### 问答记录")
         with col2:
             if st.button("🗑️ 清空问答记录", key="clear_history", use_container_width=True):
-                st.session_state.chat_history = []
-                st.session_state.messages = []
+                st.session_state.chat_histories[user_type] = []
+                st.session_state.message_histories[user_type] = []
                 st.rerun()
         
-        for i, chat in enumerate(st.session_state.chat_history):
+        for i, chat in enumerate(current_chat_history):
             timestamp = chat.get('timestamp', '')
             word_count = chat.get('word_count', 0)
             elapsed_time = chat.get('elapsed_time', 0)
@@ -188,9 +168,9 @@ def main():
         if st.button("发送", use_container_width=True):
             if question_input.strip():
                 with st.spinner("小航正在思考..."):
-                    answer, messages, word_count, elapsed_time = ask_xiaohang(question_input, user_type, st.session_state.messages)
-                st.session_state.messages = messages
-                st.session_state.chat_history.append({
+                    answer, messages, word_count, elapsed_time = ask_xiaohang(question_input, user_type, current_messages)
+                st.session_state.message_histories[user_type] = messages
+                st.session_state.chat_histories[user_type].append({
                     "question": question_input, 
                     "answer": answer,
                     "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -209,11 +189,11 @@ def main():
             st.markdown("### 问答历史")
         with col2:
             if st.button("🗑️ 清空历史", key="clear_history_bottom", use_container_width=True):
-                st.session_state.chat_history = []
-                st.session_state.messages = []
+                st.session_state.chat_histories[user_type] = []
+                st.session_state.message_histories[user_type] = []
                 st.rerun()
-        if st.session_state.chat_history:
-            for chat in reversed(st.session_state.chat_history):
+        if current_chat_history:
+            for chat in reversed(current_chat_history):
                 timestamp = chat.get('timestamp', '')
                 identity = chat.get('identity', '')
                 question = chat.get('question', '')
