@@ -133,9 +133,6 @@ def main():
         st.markdown(f"当前身份：**{profile['name']}**")
         st.markdown(f"📊 历史记录数量：**{len(st.session_state.chat_history)}**")
         
-        def set_question(q):
-            st.session_state.current_question = q
-        
         st.markdown("### 问题分类")
         tab1, tab2, tab3 = st.tabs(["新生指南", "办事流程", "应急防骗"])
         
@@ -143,19 +140,25 @@ def main():
             cols = st.columns(2)
             for i, q in enumerate(TAB_QUESTIONS["新生指南"]):
                 with cols[i % 2]:
-                    st.button(q, key=f"tab1_{i}", use_container_width=True, on_click=set_question, args=(q,))
+                    if st.button(q, key=f"tab1_{i}", use_container_width=True):
+                        st.session_state.question = q
+                        st.rerun()
         
         with tab2:
             cols = st.columns(2)
             for i, q in enumerate(TAB_QUESTIONS["办事流程"]):
                 with cols[i % 2]:
-                    st.button(q, key=f"tab2_{i}", use_container_width=True, on_click=set_question, args=(q,))
+                    if st.button(q, key=f"tab2_{i}", use_container_width=True):
+                        st.session_state.question = q
+                        st.rerun()
         
         with tab3:
             cols = st.columns(2)
             for i, q in enumerate(TAB_QUESTIONS["应急防骗"]):
                 with cols[i % 2]:
-                    st.button(q, key=f"tab3_{i}", use_container_width=True, on_click=set_question, args=(q,))
+                    if st.button(q, key=f"tab3_{i}", use_container_width=True):
+                        st.session_state.question = q
+                        st.rerun()
         
         st.markdown("---")
         col1, col2 = st.columns([3, 1])
@@ -180,7 +183,7 @@ def main():
         
         st.markdown("---")
         st.markdown("### 输入问题")
-        question_input = st.text_input("请输入您的问题：", key="question_input", value=st.session_state.get("current_question", ""))
+        question_input = st.text_input("请输入您的问题：", key="question_input", value=st.session_state.get("question", ""))
         
         if st.button("发送", use_container_width=True):
             if question_input.strip():
@@ -195,7 +198,7 @@ def main():
                     "word_count": word_count,
                     "elapsed_time": elapsed_time
                 })
-                st.session_state.current_question = ""
+                st.session_state.question = ""
                 st.rerun()
             else:
                 st.warning("请输入有效问题")
