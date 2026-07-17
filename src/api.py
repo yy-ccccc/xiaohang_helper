@@ -43,13 +43,7 @@ def get_relevant_data(question):
     for filename in relevant_files:
         file_content = campus_data.get(filename, "")
         if file_content:
-            lines = file_content.split('\n')
-            key_lines = []
-            for line in lines:
-                if line.strip() and not line.startswith('#') and len(line) > 5:
-                    key_lines.append(line)
-            joined_lines = '\n'.join(key_lines)
-            content += f"【文件：{filename}】\n{joined_lines}\n\n"
+            content += f"=== {filename} ===\n{file_content}\n\n"
     
     return content
 

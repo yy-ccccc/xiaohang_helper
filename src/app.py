@@ -122,7 +122,6 @@ def main():
         
         st.markdown(f"---")
         st.markdown(f"当前身份：**{profile['name']}**")
-        st.markdown(f"📊 历史记录数量：**{len(current_chat_history)}**")
         
         st.markdown("### 问题分类")
         identity_tabs = TAB_QUESTIONS.get(user_type, {})
