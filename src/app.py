@@ -162,7 +162,15 @@ def main():
         
         st.markdown("---")
         st.markdown("### 输入问题")
-        question_input = st.text_input("请输入您的问题：", key="question_input", value=st.session_state.get("question", ""))
+        
+        if "current_input" not in st.session_state:
+            st.session_state.current_input = ""
+        
+        if st.session_state.get("question"):
+            st.session_state.current_input = st.session_state.question
+            st.session_state.question = ""
+        
+        question_input = st.text_input("请输入您的问题：", key="question_input", value=st.session_state.current_input, on_change=lambda: st.session_state.update(current_input=st.session_state.question_input))
         
         if st.button("发送", use_container_width=True):
             if question_input.strip():
@@ -177,7 +185,7 @@ def main():
                     "word_count": word_count,
                     "elapsed_time": elapsed_time
                 })
-                st.session_state.question = ""
+                st.session_state.current_input = ""
                 st.rerun()
             else:
                 st.warning("请输入有效问题")

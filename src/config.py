@@ -11,8 +11,8 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 MAX_HISTORY_LENGTH = 10
 MAX_TOKENS = 2048
-TEMPERATURE = 0.1
-REPETITION_PENALTY = 1.1
+TEMPERATURE = 0.05
+REPETITION_PENALTY = 1.8
 
 TIMEOUT = 120
 
